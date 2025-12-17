@@ -1,0 +1,7 @@
+{
+  "name": "JobSpot - Modern Hiring Platform",
+  "description": "A sleek job search platform built with React, Tailwind, and Firestore for job applications and user profiles.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
