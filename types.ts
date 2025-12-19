@@ -3,14 +3,15 @@ export interface Job {
   id: string;
   title: string;
   company: string;
-  companyLogo: string;
+  logo: string;
   location: string;
   type: 'Full Time' | 'Part Time' | 'Contract' | 'Remote';
   category: string;
-  salary: { min: number; max: number };
+  salary: { min: number; max: number } | string;
   description: string;
   postedDate: any;
   applicants: number;
+  amount: number;
 }
 
 export interface UserProfile {
@@ -21,6 +22,9 @@ export interface UserProfile {
   bio?: string;
   phone?: string;
   telegramId?: string;
+  walletBalance?: number;
+  savedJobIds?: string[];
+  status?: 'approved' | 'pending' | 'banned';
 }
 
 export interface Application {
@@ -32,6 +36,10 @@ export interface Application {
   phone: string;
   telegramId: string;
   coverLetter: string;
-  status: 'pending' | 'reviewing' | 'accepted' | 'rejected';
+  status: 'pending' | 'reviewing' | 'accepted' | 'rejected' | 'completed';
   appliedAt: any;
+  jobTitle: string;
+  company: string;
+  logo: string;
+  jobAmount: number;
 }

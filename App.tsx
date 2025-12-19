@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
-import Withdraw from './pages/Withdraw';
 import JobDetails from './pages/JobDetails';
 import Apply from './pages/Apply';
 import Profile from './pages/Profile';
@@ -12,11 +11,12 @@ import Success from './pages/Success';
 import ApplicationDetails from './pages/ApplicationDetails';
 import ChatAdmin from './pages/ChatAdmin';
 import Search from './pages/Search';
+import HowToWork from './pages/HowToWork';
 import AdminDashboard from './admin/Dashboard';
 import { auth, firestoreService } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-const ProtectedRoute = ({ children, user }: { children: React.ReactNode, user: any }) => {
+const ProtectedRoute = ({ children, user }: { children?: React.ReactNode, user: any }) => {
   const [status, setStatus] = useState<'loading' | 'approved' | 'unauthorized' | 'banned'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -29,7 +29,7 @@ const ProtectedRoute = ({ children, user }: { children: React.ReactNode, user: a
       try {
         const profile = await firestoreService.getUserProfile(user.uid);
         if (!profile) {
-          setStatus('approved'); // Fallback if record not yet created
+          setStatus('approved'); 
           return;
         }
         
@@ -78,26 +78,6 @@ const ProtectedRoute = ({ children, user }: { children: React.ReactNode, user: a
   return <>{children}</>;
 };
 
-const Navigation = () => {
-  const location = useLocation();
-  const isAuthPage = ['/login', '/register', '/success', '/admin'].includes(location.pathname);
-  if (isAuthPage) return null;
-
-  return (
-    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-[32px] px-8 py-5 flex justify-between items-center shadow-2xl z-50 transition-colors">
-      <Link to="/home" className={`text-xl ${location.pathname === '/home' ? 'brand-text-green dark:text-emerald-400 scale-110' : 'text-slate-300 dark:text-slate-600'} transition-all`}>
-        <i className="fas fa-home"></i>
-      </Link>
-      <Link to="/withdraw" className={`text-xl ${location.pathname === '/withdraw' ? 'brand-text-green dark:text-emerald-400 scale-110' : 'text-slate-300 dark:text-slate-600'} transition-all`}>
-        <i className="fas fa-wallet"></i>
-      </Link>
-      <Link to="/profile" className={`text-xl ${location.pathname === '/profile' || location.pathname.startsWith('/application') ? 'brand-text-green dark:text-emerald-400 scale-110' : 'text-slate-300 dark:text-slate-600'} transition-all`}>
-        <i className="fas fa-user"></i>
-      </Link>
-    </nav>
-  );
-};
-
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -112,47 +92,62 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen brand-bg-green px-6">
-        <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/20 animate-pulse">
-          <i className="fas fa-briefcase text-white text-3xl"></i>
-        </div>
-        <h1 className="text-white text-2xl font-extrabold tracking-tight">Jobs Center</h1>
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAF8] dark:bg-[#0F172A]">
+        <div className="w-12 h-12 border-4 border-[#2D4F32] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
     <HashRouter>
-      <AppContent user={user} />
+      <div className="min-h-screen bg-[#F8FAF8] dark:bg-[#0F172A] text-slate-900 dark:text-slate-100 transition-colors selection:bg-emerald-100 selection:text-emerald-900">
+        <div className="max-w-md mx-auto px-4 pt-6 pb-24 min-h-screen">
+          <Routes>
+            <Route path="/login" element={!user ? <Login /> : <Navigate to="/home" />} />
+            <Route path="/register" element={!user ? <Register /> : <Navigate to="/home" />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            
+            <Route path="/" element={<Navigate to="/home" />} />
+            
+            <Route path="/home" element={<ProtectedRoute user={user}><Home /></ProtectedRoute>} />
+            <Route path="/search" element={<ProtectedRoute user={user}><Search /></ProtectedRoute>} />
+            <Route path="/job/:id" element={<ProtectedRoute user={user}><JobDetails /></ProtectedRoute>} />
+            <Route path="/apply/:id" element={<ProtectedRoute user={user}><Apply /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute user={user}><Profile /></ProtectedRoute>} />
+            <Route path="/success" element={<ProtectedRoute user={user}><Success /></ProtectedRoute>} />
+            <Route path="/application/:id" element={<ProtectedRoute user={user}><ApplicationDetails /></ProtectedRoute>} />
+            <Route path="/chat-admin/:id" element={<ProtectedRoute user={user}><ChatAdmin /></ProtectedRoute>} />
+            <Route path="/how-to-work" element={<ProtectedRoute user={user}><HowToWork /></ProtectedRoute>} />
+            
+            <Route path="*" element={<Navigate to="/home" />} />
+          </Routes>
+        </div>
+
+        {user && (
+          <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-100 dark:border-slate-800 py-3 px-6 flex justify-between items-center z-50 transition-colors max-w-md mx-auto rounded-t-[32px] shadow-2xl shadow-black/5">
+            <Link to="/home" className="flex flex-col items-center gap-1.5 text-slate-300 dark:text-slate-600 hover:text-[#2D4F32] dark:hover:text-emerald-400 transition-all active:scale-90">
+              <i className="fas fa-home text-xl"></i>
+              <span className="text-[7px] font-black uppercase tracking-widest">Home</span>
+            </Link>
+            <Link to="/search" className="flex flex-col items-center gap-1.5 text-slate-300 dark:text-slate-600 hover:text-[#2D4F32] dark:hover:text-emerald-400 transition-all active:scale-90">
+              <i className="fas fa-search text-xl"></i>
+              <span className="text-[7px] font-black uppercase tracking-widest">Search</span>
+            </Link>
+            <Link to={`/chat-admin/${user.uid}`} className="w-16 h-16 brand-bg-green rounded-full flex items-center justify-center text-white -mt-12 shadow-2xl shadow-[#2D4F32]/40 border-[6px] border-[#F8FAF8] dark:border-[#0F172A] transition-all hover:scale-110 active:scale-95 group">
+              <i className="fas fa-comments-alt text-2xl group-hover:rotate-12 transition-transform"></i>
+            </Link>
+            <Link to="/profile" className="flex flex-col items-center gap-1.5 text-slate-300 dark:text-slate-600 hover:text-[#2D4F32] dark:hover:text-emerald-400 transition-all active:scale-90">
+              <i className="fas fa-user text-xl"></i>
+              <span className="text-[7px] font-black uppercase tracking-widest">Profile</span>
+            </Link>
+            <Link to="/how-to-work" className="flex flex-col items-center gap-1.5 text-slate-300 dark:text-slate-600 hover:text-[#2D4F32] dark:hover:text-emerald-400 transition-all active:scale-90">
+              <i className="fas fa-book-open text-xl"></i>
+              <span className="text-[7px] font-black uppercase tracking-widest">Policies</span>
+            </Link>
+          </nav>
+        )}
+      </div>
     </HashRouter>
-  );
-};
-
-const AppContent = ({ user }: { user: any }) => {
-  const location = useLocation();
-  const isAdminPage = location.pathname.startsWith('/admin');
-
-  return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAF8] dark:bg-[#0F172A] relative overflow-x-hidden transition-colors">
-      <main className={`flex-1 w-full ${isAdminPage ? '' : 'max-w-2xl mx-auto px-4 pt-6'} ${user ? 'pb-40' : 'pb-6'}`}>
-        <Routes>
-          <Route path="/" element={user ? <Navigate to="/home" /> : <Navigate to="/login" />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/home" element={<ProtectedRoute user={user}><Home /></ProtectedRoute>} />
-          <Route path="/withdraw" element={<ProtectedRoute user={user}><Withdraw /></ProtectedRoute>} />
-          <Route path="/search" element={<ProtectedRoute user={user}><Search /></ProtectedRoute>} />
-          <Route path="/job/:id" element={<ProtectedRoute user={user}><JobDetails /></ProtectedRoute>} />
-          <Route path="/apply/:id" element={<ProtectedRoute user={user}><Apply /></ProtectedRoute>} />
-          <Route path="/success" element={<ProtectedRoute user={user}><Success /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute user={user}><Profile /></ProtectedRoute>} />
-          <Route path="/application/:id" element={<ProtectedRoute user={user}><ApplicationDetails /></ProtectedRoute>} />
-          <Route path="/chat-admin/:id" element={<ProtectedRoute user={user}><ChatAdmin /></ProtectedRoute>} />
-          <Route path="/admin" element={<AdminDashboard />} />
-        </Routes>
-      </main>
-      {user && <Navigation />}
-    </div>
   );
 };
 

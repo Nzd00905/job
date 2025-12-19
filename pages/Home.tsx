@@ -6,24 +6,51 @@ import { auth, firestoreService } from '../services/firebase';
 const Home: React.FC = () => {
   const user = auth.currentUser;
   const navigate = useNavigate();
-  const [savedJobs, setSavedJobs] = useState<string[]>([]);
+  const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchJobs = async () => {
+    const fetchInitialData = async () => {
       setLoading(true);
-      const data = await firestoreService.getJobs();
-      setJobs(data);
-      setLoading(false);
+      try {
+        const [jobsData, profile] = await Promise.all([
+          firestoreService.getJobs(),
+          user ? firestoreService.getUserProfile(user.uid) : null
+        ]);
+        setJobs(jobsData);
+        if (profile?.savedJobIds) {
+          setSavedJobIds(profile.savedJobIds);
+        }
+      } catch (err) {
+        console.error("Home fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
     };
-    fetchJobs();
-  }, []);
+    fetchInitialData();
+  }, [user]);
 
-  const toggleSave = (e: React.MouseEvent, id: string) => {
+  const toggleSave = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
-    setSavedJobs(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    const isCurrentlySaved = savedJobIds.includes(id);
+    
+    // Optimistic UI Update
+    setSavedJobIds(prev => isCurrentlySaved ? prev.filter(item => item !== id) : [...prev, id]);
+    
+    try {
+      await firestoreService.toggleSaveJob(user.uid, id, isCurrentlySaved);
+    } catch (err) {
+      console.error("Save toggle failed:", err);
+      // Revert on failure
+      setSavedJobIds(prev => isCurrentlySaved ? [...prev, id] : prev.filter(item => item !== id));
+    }
   };
 
   return (
@@ -38,10 +65,7 @@ const Home: React.FC = () => {
         </Link>
       </header>
 
-      <div 
-        onClick={() => navigate('/search')}
-        className="relative group cursor-pointer"
-      >
+      <div onClick={() => navigate('/search')} className="relative group cursor-pointer">
         <i className="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600"></i>
         <div className="w-full bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-2xl py-5 pl-14 pr-6 text-sm font-semibold border border-slate-100 dark:border-slate-700 shadow-sm transition-all">
           Search for jobs...
@@ -65,7 +89,7 @@ const Home: React.FC = () => {
                   onClick={(e) => toggleSave(e, job.id)}
                   className="absolute top-5 right-5 w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 text-slate-300 dark:text-slate-600 hover:text-[#2D4F32] dark:hover:text-emerald-400 transition-colors z-10"
                 >
-                  <i className={`${savedJobs.includes(job.id) ? 'fas' : 'far'} fa-bookmark ${savedJobs.includes(job.id) ? 'brand-text-green dark:text-emerald-400' : ''}`}></i>
+                  <i className={`${savedJobIds.includes(job.id) ? 'fas' : 'far'} fa-bookmark ${savedJobIds.includes(job.id) ? 'brand-text-green dark:text-emerald-400' : ''}`}></i>
                 </button>
 
                 <div className="flex items-start justify-between mb-4 pr-10">
@@ -83,10 +107,10 @@ const Home: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Price</p>
-                    <p className="text-slate-900 dark:text-white font-bold text-base">{job.salary}</p>
+                    <p className="text-slate-900 dark:text-white font-bold text-base">${job.amount || job.salary}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Applicant</p>
+                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Applicants</p>
                     <div className="flex items-center gap-1">
                       <div className="w-5 h-5 rounded-full applicant-bg dark:bg-amber-900/30 flex items-center justify-center text-[10px] applicant-text dark:text-amber-400">
                          <i className="fas fa-user text-[8px]"></i>
