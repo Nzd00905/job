@@ -38,13 +38,15 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 
-// Use initializeFirestore with long polling detection for better reliability across different hostings
+// Use forceLongPolling: true to ensure compatibility with restricted hosting networks
 export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: true,
+  useFetchStreams: false
 });
 
 // Helper to remove undefined/NaN values that Firestore rejects
 const sanitize = (data: any) => {
+  if (data === null || data === undefined) return null;
   const clean: any = {};
   Object.keys(data).forEach(key => {
     const val = data[key];
