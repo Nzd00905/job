@@ -20,7 +20,8 @@ import {
   arrayRemove,
   serverTimestamp,
   writeBatch,
-  deleteField
+  deleteField,
+  initializeFirestore
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -36,8 +37,27 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
-// Use standard getFirestore for maximum compatibility
-export const db = getFirestore(app);
+
+// Use initializeFirestore with long polling detection for better reliability across different hostings
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
+
+// Helper to remove undefined/NaN values that Firestore rejects
+const sanitize = (data: any) => {
+  const clean: any = {};
+  Object.keys(data).forEach(key => {
+    const val = data[key];
+    if (val === undefined || val === null) return;
+    if (typeof val === 'number' && isNaN(val)) return;
+    if (typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date)) {
+      clean[key] = sanitize(val);
+    } else {
+      clean[key] = val;
+    }
+  });
+  return clean;
+};
 
 export const firestoreService = {
   // --- ADMIN SYSTEM ---
@@ -103,14 +123,15 @@ export const firestoreService = {
 
   async saveUserProfile(uid: string, data: any) {
     try {
-      await setDoc(doc(db, 'users', uid), { 
+      const cleanData = sanitize({ 
         ...data, 
         savedJobIds: data.savedJobIds || [],
         status: data.status || 'approved',
         lastUpdated: serverTimestamp()
-      }, { merge: true });
-    } catch (e) {
-      console.error("[SAVE_USER_PROFILE_ERROR]", e);
+      });
+      await setDoc(doc(db, 'users', uid), cleanData, { merge: true });
+    } catch (e: any) {
+      console.error(`[SAVE_USER_PROFILE_ERROR] Code: ${e.code}`, e);
       throw e;
     }
   },
@@ -143,27 +164,29 @@ export const firestoreService = {
 
   async addJob(jobData: any) {
     try {
-      return await addDoc(collection(db, 'jobs'), { 
+      const cleanData = sanitize({ 
         ...jobData, 
-        amount: parseFloat(jobData.amount || 0),
+        amount: Number(jobData.amount) || 0,
         createdAt: serverTimestamp(), 
         applicants: 0 
       });
-    } catch (e) {
-      console.error("[ADD_JOB_ERROR]", e);
+      return await addDoc(collection(db, 'jobs'), cleanData);
+    } catch (e: any) {
+      console.error(`[ADD_JOB_ERROR] Code: ${e.code}`, e);
       throw e;
     }
   },
 
   async updateJob(id: string, data: any) {
     try {
-      await updateDoc(doc(db, 'jobs', id), {
+      const cleanData = sanitize({
         ...data,
-        amount: parseFloat(data.amount || 0),
+        amount: Number(data.amount) || 0,
         updatedAt: serverTimestamp()
       });
-    } catch (e) {
-      console.error("[UPDATE_JOB_ERROR]", e);
+      await updateDoc(doc(db, 'jobs', id), cleanData);
+    } catch (e: any) {
+      console.error(`[UPDATE_JOB_ERROR] Code: ${e.code}`, e);
       throw e;
     }
   },
@@ -207,9 +230,9 @@ export const firestoreService = {
       if (!jobSnap.exists()) throw new Error("Job not found");
       const job = jobSnap.data();
       
-      const jobPrice = typeof job.amount === 'number' ? job.amount : parseFloat(job.amount || 0);
+      const jobPrice = Number(job.amount) || 0;
 
-      const docRef = await addDoc(collection(db, 'applications'), {
+      const applicationData = sanitize({
         jobId, 
         userId, 
         ...data, 
@@ -220,11 +243,13 @@ export const firestoreService = {
         logo: job?.logo || '',
         jobAmount: jobPrice 
       });
+
+      const docRef = await addDoc(collection(db, 'applications'), applicationData);
       
       await updateDoc(doc(db, 'jobs', jobId), { applicants: increment(1) });
       return docRef.id;
-    } catch (e) {
-      console.error("[SUBMIT_APPLICATION_ERROR]", e);
+    } catch (e: any) {
+      console.error(`[SUBMIT_APPLICATION_ERROR] Code: ${e.code}`, e);
       throw e;
     }
   },
@@ -289,10 +314,10 @@ export const firestoreService = {
     if (!id) throw new Error("Missing Application ID");
     try {
       const applicationRef = doc(db, 'applications', id);
-      const updates: any = { 
+      const updates: any = sanitize({ 
         status: status,
         updatedAt: serverTimestamp()
-      };
+      });
 
       if (status === 'completed') {
         updates.completedAt = serverTimestamp();
@@ -304,7 +329,7 @@ export const firestoreService = {
       console.log(`[DATABASE SUCCESS] Status for ${id} updated to ${status}`);
       return true;
     } catch (err: any) {
-      console.error(`[DATABASE ERROR] Failed to update ${id}:`, err);
+      console.error(`[DATABASE ERROR] Code: ${err.code} Failed to update ${id}:`, err);
       throw err;
     }
   },
@@ -316,24 +341,26 @@ export const firestoreService = {
       const messageRef = doc(collection(db, 'messages'));
       const batch = writeBatch(db);
       
-      batch.set(messageRef, {
+      const messageData = sanitize({
         chatId,
         text,
         senderId,
         senderRole,
         timestamp: serverTimestamp()
       });
+
+      batch.set(messageRef, messageData);
       
-      batch.set(doc(db, 'threads', chatId), {
+      batch.set(doc(db, 'threads', chatId), sanitize({
         lastMessage: text,
         lastTimestamp: serverTimestamp(),
         id: chatId,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
 
       await batch.commit();
-    } catch (e) {
-      console.error("[SEND_MESSAGE_ERROR]", e);
+    } catch (e: any) {
+      console.error(`[SEND_MESSAGE_ERROR] Code: ${e.code}`, e);
       throw e;
     }
   },
@@ -402,14 +429,15 @@ export const firestoreService = {
 
   async addWithdrawal(userId: string, payload: any) {
     try {
-      return await addDoc(collection(db, 'withdrawals'), {
+      const cleanData = sanitize({
         ...payload,
         userId,
         status: 'pending',
         createdAt: serverTimestamp()
       });
-    } catch (e) {
-      console.error("[ADD_WITHDRAWAL_ERROR]", e);
+      return await addDoc(collection(db, 'withdrawals'), cleanData);
+    } catch (e: any) {
+      console.error(`[ADD_WITHDRAWAL_ERROR] Code: ${e.code}`, e);
       throw e;
     }
   },
@@ -427,9 +455,10 @@ export const firestoreService = {
 
   async updateSettings(data: any) {
     try {
-      await setDoc(doc(db, 'settings', 'main'), data, { merge: true });
-    } catch (e) {
-      console.error("[UPDATE_SETTINGS_ERROR]", e);
+      const cleanData = sanitize(data);
+      await setDoc(doc(db, 'settings', 'main'), cleanData, { merge: true });
+    } catch (e: any) {
+      console.error(`[UPDATE_SETTINGS_ERROR] Code: ${e.code}`, e);
       throw e;
     }
   }
