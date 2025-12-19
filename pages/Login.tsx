@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth } from '../services/firebase';
@@ -48,7 +47,7 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-[#F8FAF8] to-emerald-50 dark:from-slate-950 dark:to-slate-900 transition-colors">
-      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-[40px] p-10 shadow-2xl animate-slide-up border border-slate-50 dark:border-slate-700 transition-colors">
+      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-[40px] p-10 shadow-2xl animate-slide-up border border-slate-100 dark:border-slate-700 transition-colors">
         <div className="text-center mb-10">
           <div className="w-16 h-16 brand-bg-green rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#2D4F32]/20">
             <i className={`fas ${view === 'login' ? 'fa-briefcase' : 'fa-key'} text-white text-2xl`}></i>
@@ -135,17 +134,6 @@ const Login: React.FC = () => {
           <p className="text-slate-400 dark:text-slate-500 text-sm font-medium transition-colors">
             Don't have an account? <Link to="/register" className="brand-text-green dark:text-emerald-400 font-bold hover:underline transition-colors ml-1">Create Account</Link>
           </p>
-        </div>
-
-        {/* Admin Access Portal Button */}
-        <div className="mt-6">
-          <button 
-            onClick={() => navigate('/admin')}
-            className="w-full flex items-center justify-center gap-2 py-4 bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border border-slate-100 dark:border-slate-700 hover:text-[#2D4F32] dark:hover:text-emerald-400 transition-all active:scale-[0.98]"
-          >
-            <i className="fas fa-shield-halved"></i>
-            Admin Access Portal
-          </button>
         </div>
       </div>
     </div>
