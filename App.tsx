@@ -134,7 +134,7 @@ const App: React.FC = () => {
               <span className="text-[7px] font-black uppercase tracking-widest">Search</span>
             </Link>
             <Link to={`/chat-admin/${user.uid}`} className="w-16 h-16 brand-bg-green rounded-full flex items-center justify-center text-white -mt-12 shadow-2xl shadow-[#2D4F32]/40 border-[6px] border-[#F8FAF8] dark:border-[#0F172A] transition-all hover:scale-110 active:scale-95 group">
-              <i className="fas fa-comments-alt text-2xl group-hover:rotate-12 transition-transform"></i>
+              <i className="fas fa-comment-dots text-2xl group-hover:rotate-12 transition-transform"></i>
             </Link>
             <Link to="/profile" className="flex flex-col items-center gap-1.5 text-slate-300 dark:text-slate-600 hover:text-[#2D4F32] dark:hover:text-emerald-400 transition-all active:scale-90">
               <i className="fas fa-user text-xl"></i>
